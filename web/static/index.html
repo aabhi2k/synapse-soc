@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>(function(){try{if(localStorage.getItem('synapse-theme')!=='light')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+  <title>SYNAPSE-SOC — Tier-1 SOC Intelligence Console</title>
+
+  <!-- Plus Jakarta Sans font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            serif: ['Plus Jakarta Sans', 'Georgia', 'serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: {
+              0:  '#F5F6F6',
+              1:  '#FFFFFF',
+              2:  '#EEF0F0',
+              3:  '#E9ECEC',
+              4:  '#E3E6E6',
+            },
+            border: {
+              subtle: '#E3E6E6',
+              muted:  '#D4D8D8',
+              strong: '#BFC5C5',
+            },
+            text: {
+              primary:   '#14181A',
+              secondary: '#4A5459',
+              muted:     '#7A8489',
+              accent:    '#2F6F62',
+            },
+            accent: {
+              50:  '#F3F8F7',
+              100: '#E6F0EE',
+              200: '#C9DAD6',
+              300: '#2F6F62',
+              400: '#265C51',
+              500: '#2F6F62',
+              600: '#265C51',
+              700: '#1F4A41',
+              800: '#1A3F37',
+              900: '#14312B',
+            },
+            danger: {
+              DEFAULT: '#14181A',
+              muted:   '#D4D8D8',
+              soft:    '#EEF0F0',
+            },
+            warning: {
+              DEFAULT: '#6B9A90',
+              muted:   '#C9DAD6',
+              soft:    '#EEF3F2',
+            },
+            info: {
+              DEFAULT: '#4A5459',
+              muted:   '#C9DAD6',
+              soft:    '#EEF3F2',
+            },
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons (vanilla JS) -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <style>
+    /* ─── Scrollbars ─── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--line-stronger); }
+
+    /* ─── Base ─── */
+    * { box-sizing: border-box; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    /* ─── Typography scale ─── */
+    .label-xs {
+      font-size: 10px;
+      font-weight:700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--mist);
+    }
+
+    /* ─── Lucide icon sizing helpers ─── */
+    [data-lucide] { display: inline-block; vertical-align: middle; }
+
+    /* ─── Tab active state ─── */
+    .tab-btn-active {
+      color: var(--accent) !important;
+      border-bottom-color: var(--accent) !important;
+      font-weight:700;
+    }
+
+    /* ─── Incident card selected ─── */
+    .incident-card-selected {
+      border-color: var(--accent) !important;
+      background: var(--accent-tint) !important;
+    }
+
+    /* ─── Pulse dot ─── */
+    .pulse-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ─── Score ring ─── */
+    .score-ring {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border: 2px solid;
+    }
+
+    /* ─── MITRE tactic cell ─── */
+    .mitre-cell-hit {
+      background: var(--accent-tint);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .mitre-cell-idle {
+      background: var(--surface);
+      border-color: var(--line);
+      color: var(--faint);
+    }
+
+    /* ─── Responsive sidebar ─── */
+    @media (max-width: 900px) {
+      #workspace { flex-direction: column; }
+      #sidebar { width: 100% !important; height: 280px; border-right: none !important; border-bottom: 1px solid var(--line); }
+      #main-panel { flex: 1; min-height: 0; }
+    }
+    @media (max-width: 640px) {
+      #top-kpis { display: none; }
+      #sidebar { height: 240px; }
+      #tab-bar { overflow-x: auto; white-space: nowrap; }
+      #tab-bar::-webkit-scrollbar { height: 2px; }
+      .grid-analytics { grid-template-columns: 1fr !important; }
+      .grid-playbooks { grid-template-columns: 1fr !important; }
+    }
+
+    /* ─── Smooth transitions ─── */
+    .transition-all-200 { transition: all 0.2s ease; }
+
+    /* ─── Glass card ─── */
+    .glass-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    /* ─── Input style ─── */
+    .input-base {
+      background: var(--well);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+    .input-base:focus { border-color: var(--accent); }
+    .input-base::placeholder { color: var(--mist); }
+
+    /* ─── Badge ─── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight:700; letter-spacing: 0.04em;
+      padding: 2px 8px; border-radius: 4px;
+      border: 1px solid transparent;
+    }
+
+    /* ─── Button ─── */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--accent); color: var(--accent-tint);
+      font-size: 12px; font-weight:800;
+      padding: 8px 16px; border-radius: 8px;
+      border: none; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; color: var(--slate);
+      font-size: 12px; font-weight:600;
+      padding: 7px 12px; border-radius: 8px;
+      border: 1px solid var(--line); cursor: pointer; transition: all 0.15s;
+    }
+    .btn-ghost:hover { background: var(--soft); color: var(--ink); border-color: var(--line-strong); }
+
+    .btn-danger {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--soft); color: var(--ink);
+      font-size: 12px; font-weight:700;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1px solid var(--line-strong); cursor: pointer; transition: all 0.15s;
+      width: 100%; justify-content: center;
+    }
+    .btn-danger:hover { background: var(--line-strong); }
+
+    .btn-warning {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--tint); color: var(--accent-soft);
+      font-size: 12px; font-weight:700;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1px solid var(--accent-line); cursor: pointer; transition: all 0.15s;
+      width: 100%; justify-content: center;
+    }
+    .btn-warning:hover { background: var(--accent-line); }
+
+    .btn-info {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--tint); color: var(--slate);
+      font-size: 12px; font-weight:700;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1px solid var(--accent-line); cursor: pointer; transition: all 0.15s;
+      width: 100%; justify-content: center;
+    }
+    .btn-info:hover { background: var(--accent-line); }
+
+    /* ─── Severity dots ─── */
+    .sev-critical { color: var(--ink); }
+    .sev-high     { color: var(--accent); }
+    .sev-medium   { color: var(--accent-soft); }
+    .sev-low      { color: var(--slate); }
+    .sev-info     { color: var(--mist); }
+
+    /* ─── Bar chart row ─── */
+    .bar-track {
+      height: 6px; border-radius: 99px;
+      background: var(--line); overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 99px; }
+
+
+    /* ═════ Theme tokens: light (default) and dark ═════ */
+    :root {
+      color-scheme:light;
+      --surface:#FFFFFF; --well:#F5F6F6; --soft:#EEF0F0; --tint:#EEF3F2;
+      --line:#E3E6E6; --line-strong:#D4D8D8; --line-stronger:#BFC5C5;
+      --ink:#14181A; --on-ink:#FFFFFF; --slate:#2E383C; --mist:#56626A; --faint:#B4BBBD;
+      --accent:#2F6F62; --accent-hover:#265C51; --accent-tint:#E6F0EE; --accent-line:#C9DAD6; --accent-soft:#6B9A90;
+      --focus-ring:rgba(47,111,98,.12); --backdrop:rgba(20,24,26,.35);
+    }
+    :root[data-theme="dark"] {
+      color-scheme:dark;
+      --surface:#0F1011; --well:#08090A; --soft:#141516; --tint:#121314;
+      --line:#1C1D1F; --line-strong:#2A2C2F; --line-stronger:#3A3D41;
+      --ink:#F7F8F8; --on-ink:#08090A; --slate:#D0D4DA; --mist:#A6ACB5; --faint:#4B4F55;
+      --accent:#5FB3A1; --accent-hover:#7CC9B8; --accent-tint:#12241F; --accent-line:#24493F; --accent-soft:#4F8A7D;
+      --focus-ring:rgba(95,179,161,.22); --backdrop:rgba(0,0,0,.6);
+    }
+    #brief-modal { background:var(--backdrop) !important; }
+    ::-webkit-scrollbar-thumb { background:var(--line-strong); }
+
+    /* ═════ SYNAPSE-SOC refined layer: Swiss-spa minimalism, one palette, fully responsive ═════
+       Tokens: ink var(--ink) · slate var(--slate) · mist var(--mist) · line var(--line) · well var(--well) · accent var(--accent) */
+    :root { --pad:clamp(16px,2.2vw,32px); }
+    body { font-size:13px; -webkit-font-smoothing:antialiased; }
+    h2,h3,#detail-title,#brief-headline { font-family:'Plus Jakarta Sans',system-ui,sans-serif !important; font-weight:700 !important; letter-spacing:-0.02em; color:var(--ink) !important; }
+    #detail-title { font-size:clamp(22px,2.4vw,30px) !important; line-height:1.15 !important; }
+    #brief-headline { font-size:clamp(20px,2vw,26px) !important; line-height:1.25 !important; }
+    .label-xs { font-size:11px; font-weight:600; letter-spacing:0.02em; text-transform:none; color:var(--mist); }
+    .glass-card { background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+    .input-base { background:var(--surface); border-radius:4px; font-size:13px; padding:9px 12px; }
+    .input-base:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--focus-ring); }
+    .badge { border-radius:3px; font-weight:600; letter-spacing:0.01em; }
+    .btn-primary,.btn-ghost,.btn-danger,.btn-warning,.btn-info { border-radius:4px; padding:9px 16px; font-weight:600; letter-spacing:0.01em; transition:background .2s, color .2s, border-color .2s; }
+    .btn-primary { background:var(--ink); color:var(--on-ink); } .btn-primary:hover { background:var(--accent); }
+    .btn-danger,.btn-warning,.btn-info { background:var(--surface); color:var(--ink); border:1px solid var(--line); }
+    .btn-danger:hover,.btn-warning:hover,.btn-info:hover { background:var(--ink); color:var(--on-ink); border-color:var(--ink); }
+    button:focus-visible,select:focus-visible,a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    header { padding:0 var(--pad) !important; }
+    #tab-bar { padding:0 var(--pad) !important; overflow-x:auto; }
+    #tab-bar button { padding:16px 18px !important; font-size:13px !important; }
+    #detail-view > div:nth-child(1) { padding:20px var(--pad) !important; }
+    #detail-view > div:nth-child(3) { padding:var(--pad) !important; gap:20px !important; }
+    #tab-content-brief,#tab-content-graph,#tab-content-mitre,#tab-content-analytics,#tab-content-contain { gap:20px !important; }
+    #incident-list { padding:12px !important; gap:8px !important; }
+    #sidebar { width:clamp(280px,24vw,360px) !important; }
+    .score-ring { width:76px; height:76px; border-width:1px; }
+    .tab-content-wide { max-width:1180px; }
+    #alerts-tbody td { padding:11px 14px !important; }
+    table { min-width:640px; }
+    #tab-content-alerts > div { overflow-x:auto !important; }
+    #mitre-timeline-strip { grid-template-columns:repeat(auto-fit,minmax(104px,1fr)) !important; }
+    footer { padding:14px var(--pad) !important; }
+    @media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important;} }
+
+    @media (min-width:1600px){ #detail-view > div:nth-child(3) > div { max-width:1280px; width:100%; margin-inline:auto; } }
+    @media (max-width:1100px){
+      #tab-content-analytics > div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+      #top-kpis > div { padding:6px 10px !important; }
+    }
+    @media (max-width:900px){
+      body { height:auto !important; min-height:100dvh; overflow:auto !important; }
+      #workspace { overflow:visible !important; }
+      #sidebar { width:100% !important; height:auto !important; max-height:300px; }
+      #main-panel { overflow:visible !important; }
+      #detail-view { overflow:visible !important; }
+      #detail-view > div:nth-child(3) { overflow:visible !important; }
+      header { height:auto !important; min-height:56px; flex-wrap:wrap; padding-block:10px !important; }
+      #top-kpis { order:3; width:100%; display:grid !important; grid-template-columns:repeat(4,1fr); }
+      .grid-playbooks { grid-template-columns:1fr !important; }
+    }
+    @media (max-width:640px){
+      #top-kpis { display:grid !important; grid-template-columns:repeat(2,1fr); }
+      footer { flex-direction:column; align-items:stretch !important; }
+      footer select,footer input,footer button { width:100% !important; min-width:0 !important; }
+      #tab-bar button { padding:14px 12px !important; }
+      #brief-modal { padding:12px !important; }
+    }
+
+    /* ═════ Splash / loading screen ═════ */
+    #splash { position:fixed; inset:0; z-index:100; background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center; transition:opacity .45s ease, visibility .45s ease; }
+    #splash.is-hidden { opacity:0; visibility:hidden; pointer-events:none; }
+    #splash .splash-mark { width:44px; height:44px; border:1px solid var(--line-strong); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--accent); }
+    #splash .splash-name { font-family:'Plus Jakarta Sans',system-ui,sans-serif; font-size:clamp(30px,5vw,40px); font-weight:700; color:var(--ink); line-height:1; margin-top:6px; }
+    #splash .splash-sub { font-size:13px; color:var(--mist); margin:0; }
+    #splash .splash-bar { width:120px; height:1px; background:var(--line); overflow:hidden; position:relative; margin-top:10px; }
+    #splash .splash-bar::after { content:""; position:absolute; inset:0; width:40%; background:var(--accent); animation:splash-slide 1.2s ease-in-out infinite; }
+    @keyframes splash-slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(250%); } }
+
+    /* Bold, high-visibility type */
+    body { font-weight:500; }
+    h2,h3,#detail-title,#brief-headline,#splash .splash-name { font-weight:800 !important; letter-spacing:-0.02em; }
+    .btn-primary,.btn-ghost,.btn-danger,.btn-warning,.btn-info { font-weight:700; }
+  </style>
+</head>
+
+<body style="background:var(--surface); color:var(--ink); display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden;">
+
+  <!-- ═══════════════════════════════════════ SPLASH ═══════════════════════════════════════ -->
+  <div id="splash" role="status" aria-live="polite">
+    <div class="splash-mark"><i data-lucide="brain-circuit" style="width:20px; height:20px;"></i></div>
+    <div class="splash-name">SYNAPSE-SOC</div>
+    <p class="splash-sub">Preparing your shift briefing</p>
+    <div class="splash-bar" aria-hidden="true"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ TOP NAV ═══════════════════════════════════════ -->
+  <header style="background:var(--surface); border-bottom:1px solid var(--line); padding:0 24px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; gap:16px;">
+
+    <!-- Brand -->
+    <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+      <div style="width:32px; height:32px; border-radius:8px; background:var(--accent-tint); border:1px solid var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <i data-lucide="brain-circuit" style="width:16px; height:16px; color:var(--accent);"></i>
+      </div>
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <a href="/" title="Back to home" style="text-decoration:none;"><span style="font-size:14px; font-weight:800; color:var(--ink); letter-spacing:-0.01em;">SYNAPSE-SOC</span></a>
+          <span class="badge" style="background:var(--accent-tint); color:var(--accent); border-color:var(--accent);">Tier-1 SOC</span>
+        </div>
+        <p style="font-size:11px; color:var(--mist); margin:0;">Enterprise Incident Intelligence Console</p>
+      </div>
+    </div>
+
+    <!-- KPI Counters -->
+    <div id="top-kpis" style="display:flex; align-items:center; gap:8px;">
+      <div style="background:var(--well); border:1px solid var(--line); border-radius:8px; padding:6px 14px; text-align:center;">
+        <div class="label-xs">Raw Telemetry</div>
+        <div style="font-size:13px; font-weight:800; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums;" id="hud-alerts">3,000</div>
+      </div>
+      <div style="background:var(--well); border:1px solid var(--line); border-radius:8px; padding:6px 14px; text-align:center;">
+        <div class="label-xs">Incidents</div>
+        <div style="font-size:13px; font-weight:800; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums;" id="hud-incidents">--</div>
+      </div>
+      <div style="background:var(--well); border:1px solid var(--line); border-radius:8px; padding:6px 14px; text-align:center;">
+        <div class="label-xs">Noise Suppressed</div>
+        <div style="font-size:13px; font-weight:800; color:var(--accent); font-family:inherit; font-variant-numeric:tabular-nums;" id="hud-suppression">99.8%</div>
+      </div>
+      <div style="background:var(--well); border:1px solid var(--line); border-radius:8px; padding:6px 14px; text-align:center;">
+        <div class="label-xs">MTTT Reduction</div>
+        <div style="font-size:13px; font-weight:800; color:var(--accent-soft); font-family:inherit; font-variant-numeric:tabular-nums;" id="hud-mttt">99.8%</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+    <button id="theme-toggle" type="button" onclick="toggleTheme()" class="btn-ghost" style="padding:9px 11px;" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+      <i data-lucide="moon" style="width:14px; height:14px;"></i>
+    </button>
+    <button onclick="downloadReport()" class="btn-ghost" style="flex-shrink:0;">
+      <i data-lucide="download" style="width:13px; height:13px;"></i>
+      Export Handover
+    </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════ WORKSPACE ═══════════════════════════════════════ -->
+  <div id="workspace" style="flex:1; display:flex; overflow:hidden; min-height:0;">
+
+    <!-- ─── LEFT SIDEBAR ─── -->
+    <aside id="sidebar" style="width:320px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid var(--line); background:var(--surface); overflow:hidden;">
+
+      <!-- Filter bar -->
+      <div style="padding:14px 14px 10px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px;">
+        <div style="position:relative;">
+          <i data-lucide="search" style="width:13px; height:13px; color:var(--mist); position:absolute; left:10px; top:50%; transform:translateY(-50%); pointer-events:none;"></i>
+          <input id="search-input" oninput="applyFilters()" type="text" placeholder="Search host, user, IP, tactic…" class="input-base" style="padding-left:30px;">
+        </div>
+        <div style="display:flex; gap:8px;">
+          <select id="filter-tier" onchange="applyFilters()" class="input-base" style="flex:1;">
+            <option value="ALL">All Tiers</option>
+            <option value="Tier 0 (Crown Jewel)">Tier 0 — Crown Jewel</option>
+            <option value="Tier 1 (Mission Critical)">Tier 1 — Mission Critical</option>
+            <option value="Tier 2 (Internal Business)">Tier 2 — Internal</option>
+            <option value="Tier 3 (Dev / Guest / Lab)">Tier 3 — Dev / Lab</option>
+          </select>
+          <select id="filter-status" onchange="applyFilters()" class="input-base" style="flex:1;">
+            <option value="ALL">All Statuses</option>
+            <option value="Pending Review">Pending</option>
+            <option value="Confirmed Incident (Escalate)">Confirmed</option>
+            <option value="False Positive (Suppressed)">False Positive</option>
+            <option value="Contained & Resolved">Contained</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Incident list -->
+      <div id="incident-list" style="flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:4px;">
+        <!-- Rendered by JS -->
+      </div>
+    </aside>
+
+    <!-- ─── MAIN PANEL ─── -->
+    <main id="main-panel" style="flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--well); min-width:0;">
+
+      <!-- Empty state -->
+      <div id="no-selection" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:var(--mist);">
+        <div style="width:48px; height:48px; border-radius:12px; background:var(--surface); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;">
+          <i data-lucide="layers" style="width:22px; height:22px; color:var(--line-strong);"></i>
+        </div>
+        <div style="font-size:14px; font-weight:700; color:var(--faint);">Select an incident to begin triage</div>
+        <p style="font-size:12px; color:var(--line); max-width:280px; text-align:center; line-height:1.5;">
+          Incidents are ranked by Asset Criticality and MITRE Kill-Chain progression — not raw alert volume.
+        </p>
+      </div>
+
+      <!-- Detail view -->
+      <div id="detail-view" style="flex:1; display:flex; flex-direction:column; overflow:hidden; display:none;">
+
+        <!-- Incident banner -->
+        <div style="background:var(--surface); border-bottom:1px solid var(--line); padding:16px 24px; flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span id="detail-rank" class="badge" style="background:var(--soft); color:var(--ink); border-color:var(--line-strong); font-family:inherit; font-variant-numeric:tabular-nums;">Rank #1</span>
+              <span id="detail-id" style="font-size:11px; color:var(--mist); font-family:inherit; font-variant-numeric:tabular-nums;">INC-0001</span>
+              <span id="detail-tier-badge" class="badge" style="background:var(--soft); color:var(--slate); border-color:var(--line-strong);">Tier 0</span>
+              <span id="detail-status-badge" class="badge" style="background:var(--tint); color:var(--accent-soft); border-color:var(--accent-line);">Pending Review</span>
+            </div>
+            <h2 id="detail-title" style="font-size:16px; font-weight:800; color:var(--ink); line-height:1.3; margin:0;">Incident Title</h2>
+            <div style="display:flex; align-items:center; gap:16px; font-size:12px; color:var(--mist); flex-wrap:wrap;">
+              <span style="display:flex; align-items:center; gap:5px;">
+                <i data-lucide="monitor" style="width:12px; height:12px;"></i>
+                <strong id="detail-host" style="color:var(--slate);">DC-CORP-01</strong>
+              </span>
+              <span style="display:flex; align-items:center; gap:5px;">
+                <i data-lucide="user" style="width:12px; height:12px;"></i>
+                <strong id="detail-user" style="color:var(--slate);">corp\admin</strong>
+              </span>
+              <span style="display:flex; align-items:center; gap:5px;">
+                <i data-lucide="bell" style="width:12px; height:12px;"></i>
+                <strong id="detail-alerts-count" style="color:var(--slate);">44 alerts</strong>
+              </span>
+              <span style="display:flex; align-items:center; gap:5px;">
+                <i data-lucide="clock" style="width:12px; height:12px;"></i>
+                <strong id="detail-duration" style="color:var(--slate);">105 mins</strong>
+              </span>
+            </div>
+          </div>
+
+          <!-- Risk score -->
+          <div style="text-align:center; flex-shrink:0;">
+            <div class="score-ring" id="score-ring" style="border-color:var(--ink); background:var(--soft); margin:0 auto;">
+              <span style="font-size:18px; font-weight:800; color:var(--ink); line-height:1; font-family:inherit; font-variant-numeric:tabular-nums;" id="detail-score">98.5</span>
+              <span style="font-size:9px; color:var(--mist); letter-spacing:0.06em; text-transform:uppercase;">/ 100</span>
+            </div>
+            <div style="margin-top:6px; font-size:10px; color:var(--mist);">Crit <span id="detail-crit" style="color:var(--slate);">10.0</span>/10</div>
+          </div>
+        </div>
+
+        <!-- Tab bar -->
+        <div id="tab-bar" style="background:var(--surface); border-bottom:1px solid var(--line); padding:0 24px; display:flex; align-items:center; gap:0; flex-shrink:0;">
+          <button onclick="switchTab('brief')"     id="tab-btn-brief"     style="padding:14px 16px; font-size:12px; font-weight:600; color:var(--mist); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.15s, border-color 0.15s;">AI Brief</button>
+          <button onclick="switchTab('graph')"     id="tab-btn-graph"     style="padding:14px 16px; font-size:12px; font-weight:600; color:var(--mist); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.15s, border-color 0.15s;">Attack Graph</button>
+          <button onclick="switchTab('mitre')"     id="tab-btn-mitre"     style="padding:14px 16px; font-size:12px; font-weight:600; color:var(--mist); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.15s, border-color 0.15s;">MITRE ATT&CK</button>
+          <button onclick="switchTab('alerts')"    id="tab-btn-alerts"    style="padding:14px 16px; font-size:12px; font-weight:600; color:var(--mist); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.15s, border-color 0.15s;">Alerts (<span id="tab-alerts-count">0</span>)</button>
+          <button onclick="switchTab('analytics')" id="tab-btn-analytics" style="padding:14px 16px; font-size:12px; font-weight:600; color:var(--mist); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.15s, border-color 0.15s;">Analytics</button>
+          <button onclick="switchTab('contain')"   id="tab-btn-contain"   style="padding:14px 16px; font-size:12px; font-weight:600; color:var(--mist); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color 0.15s, border-color 0.15s;">Playbooks</button>
+        </div>
+
+        <!-- Tab content -->
+        <div style="flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:16px;">
+
+          <!-- ── TAB: AI BRIEF ── -->
+          <div id="tab-content-brief" style="display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="pulse-dot"></span>
+                <span style="font-size:11px; color:var(--mist);" id="brief-generator">Generated by Deterministic Security Expert Engine</span>
+              </div>
+              <button onclick="openBriefEditor()" class="btn-ghost">
+                <i data-lucide="pencil" style="width:12px; height:12px;"></i>
+                Edit Brief
+              </button>
+            </div>
+
+            <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:18px;">
+              <h3 id="brief-headline" style="font-size:15px; font-weight:800; color:var(--ink); margin:0; line-height:1.4;">Headline</h3>
+
+              <div>
+                <div class="label-xs" style="margin-bottom:6px;">Executive Summary</div>
+                <p id="brief-exec" style="font-size:13px; color:var(--ink); line-height:1.65; background:var(--well); padding:14px; border-radius:8px; border:1px solid var(--line); margin:0;">...</p>
+              </div>
+
+              <div>
+                <div class="label-xs" style="margin-bottom:6px;">Attack Narrative &amp; Timeline</div>
+                <p id="brief-narrative" style="font-size:13px; color:var(--slate); line-height:1.65; background:var(--well); padding:14px; border-radius:8px; border:1px solid var(--line); margin:0;">...</p>
+              </div>
+
+              <div>
+                <div class="label-xs" style="margin-bottom:8px;">Indicators of Compromise</div>
+                <div id="brief-iocs" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+              </div>
+
+              <div>
+                <div class="label-xs" style="margin-bottom:8px;">Recommended Actions</div>
+                <ul id="brief-actions" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;"></ul>
+              </div>
+            </div>
+
+            <div class="glass-card" style="padding:16px;">
+              <div class="label-xs" style="margin-bottom:10px;">Scoring Rationale</div>
+              <ul id="brief-factors" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px;"></ul>
+            </div>
+          </div>
+
+          <!-- ── TAB: ATTACK GRAPH ── -->
+          <div id="tab-content-graph" style="display:none; flex-direction:column; gap:14px;">
+            <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <div style="font-size:13px; font-weight:700; color:var(--ink);">Entity &amp; Attack Vector Topology</div>
+                  <p style="font-size:11px; color:var(--mist); margin:4px 0 0;">Interactive bipartite graph — attacker infra, victim endpoints, credential pivots, crown jewels.</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px; font-size:11px; color:var(--slate); flex-wrap:wrap;">
+                  <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--ink);display:inline-block;"></span>Crown Jewel</span>
+                  <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent-soft);display:inline-block;"></span>Initial Vector</span>
+                  <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--slate);display:inline-block;"></span>Identity Pivot</span>
+                </div>
+              </div>
+              <div id="attack-graph-container" style="background:var(--well); border:1px solid var(--line); border-radius:10px; padding:16px; overflow:hidden;"></div>
+              <div id="graph-node-details" style="background:var(--well); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div id="gn-icon-wrap" style="width:32px;height:32px;border-radius:8px;background:var(--soft);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i data-lucide="cpu" style="width:15px;height:15px;color:var(--mist);"></i>
+                  </div>
+                  <div>
+                    <div style="font-size:12px; font-weight:700; color:var(--ink);" id="gn-title">Select a node to inspect telemetry</div>
+                    <div style="font-size:11px; color:var(--mist);" id="gn-desc">Click any node in the topology to view associated MITRE techniques and asset criticality.</div>
+                  </div>
+                </div>
+                <span class="badge" id="gn-badge" style="background:var(--accent-tint); color:var(--accent); border-color:var(--accent);">Entity</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── TAB: MITRE ATT&CK ── -->
+          <div id="tab-content-mitre" style="display:none; flex-direction:column; gap:14px;">
+            <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div style="font-size:13px; font-weight:700; color:var(--ink);">Cyber Kill-Chain Progression</div>
+                <span style="font-size:11px; color:var(--accent); font-weight:700;" id="mitre-stages-count">5 Stages Covered</span>
+              </div>
+              <div id="mitre-timeline-strip" style="display:grid; grid-template-columns:repeat(7,1fr); gap:6px;"></div>
+            </div>
+            <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+              <div style="font-size:13px; font-weight:700; color:var(--ink);">Specific Techniques Observed</div>
+              <div id="mitre-techniques-list" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px;"></div>
+            </div>
+          </div>
+
+          <!-- ── TAB: ALERTS TABLE ── -->
+          <div id="tab-content-alerts" style="display:none;">
+            <div style="border:1px solid var(--line); border-radius:10px; overflow:hidden;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead style="background:var(--surface);">
+                  <tr>
+                    <th style="padding:10px 14px; text-align:left; color:var(--mist); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap; border-bottom:1px solid var(--line);">Time</th>
+                    <th style="padding:10px 14px; text-align:left; color:var(--mist); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid var(--line);">Severity</th>
+                    <th style="padding:10px 14px; text-align:left; color:var(--mist); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid var(--line);">Rule Name</th>
+                    <th style="padding:10px 14px; text-align:left; color:var(--mist); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid var(--line);">Process</th>
+                    <th style="padding:10px 14px; text-align:left; color:var(--mist); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid var(--line);">Command Line</th>
+                    <th style="padding:10px 14px; text-align:left; color:var(--mist); font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid var(--line);">MITRE ID</th>
+                  </tr>
+                </thead>
+                <tbody id="alerts-tbody" style="background:var(--well);"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── TAB: ANALYTICS ── -->
+          <div id="tab-content-analytics" style="display:none; flex-direction:column; gap:14px;" class="grid-analytics">
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+              <!-- Triage benchmark bar chart -->
+              <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+                <div style="font-size:13px; font-weight:700; color:var(--ink);">Triage Duration Benchmark — 3,000 Alerts</div>
+                <div style="display:flex; flex-direction:column; gap:14px;">
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px;">
+                      <span style="color:var(--ink); font-weight:700;">Manual Baseline (4 min/alert)</span>
+                      <span style="color:var(--ink); font-family:inherit; font-variant-numeric:tabular-nums; font-weight:800;">200.0 hrs</span>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill" style="width:100%; background:var(--ink);"></div></div>
+                    <div style="font-size:10px; color:var(--mist); margin-top:4px;">Requires 25 analyst shifts. Physically impossible for one analyst.</div>
+                  </div>
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px;">
+                      <span style="color:var(--accent-soft); font-weight:700;">1 Analyst Capacity (8h shift)</span>
+                      <span style="color:var(--accent-soft); font-family:inherit; font-variant-numeric:tabular-nums; font-weight:800;">8.0 hrs</span>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill" style="width:4%; background:var(--accent-soft);"></div></div>
+                    <div style="font-size:10px; color:var(--mist); margin-top:4px;">Covers only 4% of queue — 96% of alerts left unreviewed.</div>
+                  </div>
+                  <div>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px;">
+                      <span style="color:var(--accent); font-weight:700;">SYNAPSE-SOC Correlated Pipeline</span>
+                      <span style="color:var(--accent); font-family:inherit; font-variant-numeric:tabular-nums; font-weight:800;">0.33 hrs</span>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill" style="width:1.6%; background:var(--accent);"></div></div>
+                    <div style="font-size:10px; color:var(--accent); margin-top:4px; font-weight:700;">Entire 24h batch triaged — zero alert backlog.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI metrics grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px;">
+                  <div class="label-xs">MTTT per Alert</div>
+                  <div style="font-size:26px; font-weight:800; color:var(--accent); font-family:inherit; font-variant-numeric:tabular-nums; line-height:1;">0.40s</div>
+                  <div style="font-size:10px; color:var(--mist);">vs 240.0s manual</div>
+                </div>
+                <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px;">
+                  <div class="label-xs">Speedup Factor</div>
+                  <div style="font-size:26px; font-weight:800; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums; line-height:1;">600x</div>
+                  <div style="font-size:10px; color:var(--mist);">Operational acceleration</div>
+                </div>
+                <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px;">
+                  <div class="label-xs">Coverage Ratio</div>
+                  <div style="font-size:26px; font-weight:800; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums; line-height:1;">100%</div>
+                  <div style="font-size:10px; color:var(--mist);">Zero unreviewed alerts</div>
+                </div>
+                <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px;">
+                  <div class="label-xs">Noise Reduction</div>
+                  <div style="font-size:26px; font-weight:800; color:var(--accent-soft); font-family:inherit; font-variant-numeric:tabular-nums; line-height:1;">99.8%</div>
+                  <div style="font-size:10px; color:var(--mist);">3,000 → 7 incidents</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Prioritization matrix -->
+            <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <div style="font-size:13px; font-weight:700; color:var(--ink);">Asset Criticality vs Alert Volume — Prioritization Matrix</div>
+                  <p style="font-size:11px; color:var(--mist); margin:4px 0 0;">Why raw alert volume is a dangerous trap: stealth APT sits in Q-I, high-volume noise sits in Q-IV.</p>
+                </div>
+                <span class="badge" style="background:var(--soft); color:var(--slate); border-color:var(--line-strong);">Core Innovation</span>
+              </div>
+              <div style="background:var(--well); border:1px solid var(--line); border-radius:10px; padding:16px;">
+                <svg viewBox="0 0 700 230" style="width:100%; height:auto;">
+                  <line x1="60" y1="190" x2="660" y2="190" stroke="var(--line-strong)" stroke-width="1.5"/>
+                  <line x1="60" y1="190" x2="60" y2="20" stroke="var(--line-strong)" stroke-width="1.5"/>
+                  <text x="360" y="215" fill="var(--mist)" font-size="11" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Alert Volume (Logarithmic)</text>
+                  <text x="25" y="105" fill="var(--mist)" font-size="11" text-anchor="middle" transform="rotate(-90 25 105)" font-family="'Plus Jakarta Sans',sans-serif">Asset Criticality (0–10)</text>
+                  <line x1="360" y1="20" x2="360" y2="190" stroke="var(--line)" stroke-dasharray="4 3"/>
+                  <line x1="60" y1="105" x2="660" y2="105" stroke="var(--line)" stroke-dasharray="4 3"/>
+                  <text x="210" y="48" fill="var(--ink)" font-size="10" font-weight="bold" opacity="0.7" font-family="'Plus Jakarta Sans',sans-serif">Q-I: CRITICAL STEALTH APT</text>
+                  <text x="500" y="165" fill="var(--mist)" font-size="10" font-weight="bold" opacity="0.7" font-family="'Plus Jakarta Sans',sans-serif">Q-IV: BENIGN NOISE</text>
+                  <!-- DC Attack -->
+                  <circle cx="160" cy="42" r="16" fill="var(--soft)" stroke="var(--ink)" stroke-width="2"/>
+                  <text x="160" y="46" fill="var(--ink)" font-size="11" font-weight="bold" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">#1</text>
+                  <text x="186" y="38" fill="var(--ink)" font-size="11" font-weight="bold" font-family="'Plus Jakarta Sans',sans-serif">INC-0006 · DC-CORP-01 (91.8)</text>
+                  <text x="186" y="52" fill="var(--mist)" font-size="10" font-family="'Plus Jakarta Sans',sans-serif">27 alerts · Tier 0 (Crit 10.0)</text>
+                  <!-- Web Exploit -->
+                  <circle cx="170" cy="68" r="12" fill="var(--tint)" stroke="var(--accent-soft)" stroke-width="2"/>
+                  <text x="170" y="72" fill="var(--accent-soft)" font-size="10" font-weight="bold" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">#3</text>
+                  <text x="192" y="70" fill="var(--accent-soft)" font-size="11" font-weight="bold" font-family="'Plus Jakarta Sans',sans-serif">INC-0007 · SRV-WEB-PROD (75.0)</text>
+                  <!-- Insider Exfil -->
+                  <circle cx="300" cy="110" r="13" fill="var(--soft)" stroke="var(--slate)" stroke-width="2"/>
+                  <text x="300" y="114" fill="var(--slate)" font-size="10" font-weight="bold" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">#2</text>
+                  <text x="322" y="112" fill="var(--slate)" font-size="11" font-weight="bold" font-family="'Plus Jakarta Sans',sans-serif">INC-0005 · Insider USB (81.0)</text>
+                  <!-- Scanner Noise -->
+                  <circle cx="600" cy="155" r="22" fill="var(--soft)" stroke="var(--line-strong)" stroke-width="2" opacity="0.8"/>
+                  <text x="600" y="159" fill="var(--mist)" font-size="11" font-weight="bold" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">#5</text>
+                  <text x="600" y="137" fill="var(--mist)" font-size="10" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">1,150 Port Scans</text>
+                  <text x="600" y="181" fill="var(--faint)" font-size="10" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">Score 5.0 — Suppressed</text>
+                </svg>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── TAB: CONTAINMENT PLAYBOOKS ── -->
+          <div id="tab-content-contain" style="display:none; flex-direction:column; gap:14px;">
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;" class="grid-playbooks">
+
+              <!-- EDR Isolation -->
+              <div class="glass-card" style="padding:18px; display:flex; flex-direction:column; justify-content:space-between; gap:16px;">
+                <div>
+                  <div style="width:36px; height:36px; border-radius:8px; background:var(--soft); border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+                    <i data-lucide="shield-off" style="width:16px; height:16px; color:var(--ink);"></i>
+                  </div>
+                  <div style="font-size:13px; font-weight:800; color:var(--ink); margin-bottom:6px;">EDR Host Isolation</div>
+                  <p style="font-size:12px; color:var(--mist); line-height:1.5; margin:0;">Sever all network connections to host except the telemetry channel.</p>
+                </div>
+                <button onclick="triggerContainmentAction('ISOLATE_HOST')" class="btn-danger">
+                  <i data-lucide="lock" style="width:13px; height:13px;"></i>
+                  Isolate Primary Host
+                </button>
+              </div>
+
+              <!-- Block C2 IP -->
+              <div class="glass-card" style="padding:18px; display:flex; flex-direction:column; justify-content:space-between; gap:16px;">
+                <div>
+                  <div style="width:36px; height:36px; border-radius:8px; background:var(--tint); border:1px solid var(--accent-line); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+                    <i data-lucide="wifi-off" style="width:16px; height:16px; color:var(--accent-soft);"></i>
+                  </div>
+                  <div style="font-size:13px; font-weight:800; color:var(--ink); margin-bottom:6px;">Block C2 / Attacker IP</div>
+                  <p style="font-size:12px; color:var(--mist); line-height:1.5; margin:0;">Push dynamic firewall drop rule to perimeter edge gateways.</p>
+                </div>
+                <button onclick="triggerContainmentAction('BLOCK_IP')" class="btn-warning">
+                  <i data-lucide="ban" style="width:13px; height:13px;"></i>
+                  Block External IP
+                </button>
+              </div>
+
+              <!-- Revoke Credentials -->
+              <div class="glass-card" style="padding:18px; display:flex; flex-direction:column; justify-content:space-between; gap:16px;">
+                <div>
+                  <div style="width:36px; height:36px; border-radius:8px; background:var(--tint); border:1px solid var(--accent-line); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+                    <i data-lucide="key-round" style="width:16px; height:16px; color:var(--slate);"></i>
+                  </div>
+                  <div style="font-size:13px; font-weight:800; color:var(--ink); margin-bottom:6px;">Revoke Credentials</div>
+                  <p style="font-size:12px; color:var(--mist); line-height:1.5; margin:0;">Revoke Kerberos/OAuth tokens and require smartcard re-authentication.</p>
+                </div>
+                <button onclick="triggerContainmentAction('REVOKE_CREDENTIALS')" class="btn-info">
+                  <i data-lucide="user-x" style="width:13px; height:13px;"></i>
+                  Revoke Identity Access
+                </button>
+              </div>
+            </div>
+
+            <!-- Audit trail -->
+            <div class="glass-card" style="padding:18px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <i data-lucide="terminal" style="width:13px; height:13px; color:var(--mist);"></i>
+                <div class="label-xs">Automated Playbook Audit Trail</div>
+              </div>
+              <pre id="containment-log" style="font-size:12px; color:var(--accent); font-family:inherit; font-variant-numeric:tabular-nums; background:var(--well); padding:14px; border-radius:8px; border:1px solid var(--line); max-height:160px; overflow-y:auto; margin:0; white-space:pre-wrap;">No playbook actions triggered yet during this shift.</pre>
+            </div>
+          </div>
+
+        </div><!-- /tab content area -->
+
+        <!-- ── HUMAN-IN-THE-LOOP TRIAGE FOOTER ── -->
+        <footer style="background:var(--surface); border-top:1px solid var(--line); padding:12px 20px; flex-shrink:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <i data-lucide="user-check" style="width:13px; height:13px; color:var(--mist);"></i>
+            <span style="font-size:11px; font-weight:700; color:var(--mist); white-space:nowrap;">Analyst Verdict</span>
+          </div>
+          <select id="analyst-verdict-select" class="input-base" style="width:auto; min-width:220px; flex-shrink:0;">
+            <option value="Pending Review">Pending Review</option>
+            <option value="Confirmed Incident (Escalate)">Confirmed — Escalate to Tier 2</option>
+            <option value="False Positive (Suppressed)">False Positive — Suppressed</option>
+            <option value="Benign Authorized Activity">Benign Authorized Activity</option>
+            <option value="Contained & Resolved">Contained &amp; Resolved</option>
+          </select>
+          <input id="analyst-notes-input" type="text" placeholder="Analyst notes, hypothesis, or handover context…" class="input-base" style="flex:1; min-width:200px;">
+          <button onclick="saveTriageDecision()" class="btn-primary" style="flex-shrink:0;">
+            <i data-lucide="check" style="width:13px; height:13px;"></i>
+            Save Decision
+          </button>
+        </footer>
+
+      </div><!-- /detail-view -->
+    </main>
+  </div><!-- /workspace -->
+
+  <!-- ═══════════════════════════════════════ BRIEF EDIT MODAL ═══════════════════════════════════════ -->
+  <div id="brief-modal" style="position:fixed; inset:0; background:rgba(20,24,26,0.35); z-index:50; display:none; align-items:center; justify-content:center; padding:24px;">
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:16px; width:100%; max-width:600px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 64px rgba(20,24,26,0.12);">
+      <div style="padding:18px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <i data-lucide="file-edit" style="width:16px; height:16px; color:var(--accent);"></i>
+          <span style="font-size:14px; font-weight:800; color:var(--ink);">Edit Shift Handover Brief</span>
+        </div>
+        <button onclick="closeBriefEditor()" style="background:none; border:none; cursor:pointer; color:var(--mist); display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='var(--soft)'" onmouseout="this.style.background='none'">
+          <i data-lucide="x" style="width:16px; height:16px;"></i>
+        </button>
+      </div>
+      <div style="padding:20px; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <label class="label-xs" style="display:block; margin-bottom:6px;">Headline</label>
+          <input id="modal-edit-headline" type="text" class="input-base">
+        </div>
+        <div>
+          <label class="label-xs" style="display:block; margin-bottom:6px;">Executive Summary</label>
+          <textarea id="modal-edit-exec" rows="3" class="input-base" style="resize:vertical;"></textarea>
+        </div>
+        <div>
+          <label class="label-xs" style="display:block; margin-bottom:6px;">Attack Narrative</label>
+          <textarea id="modal-edit-narrative" rows="4" class="input-base" style="resize:vertical;"></textarea>
+        </div>
+        <div>
+          <label class="label-xs" style="display:block; margin-bottom:6px;">Impact Assessment</label>
+          <textarea id="modal-edit-impact" rows="2" class="input-base" style="resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="padding:14px 20px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px;">
+        <button onclick="closeBriefEditor()" class="btn-ghost">Cancel</button>
+        <button onclick="saveBriefEdits()" class="btn-primary">
+          <i data-lucide="save" style="width:13px; height:13px;"></i>
+          Save &amp; Approve
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ JAVASCRIPT ═══════════════════════════════════════ -->
+  <script>
+    let allIncidents = [];
+    let selectedIncident = null;
+    let currentTab = 'brief';
+
+    const ALL_MITRE_TACTICS = [
+      "Reconnaissance", "Initial Access", "Execution", "Persistence",
+      "Privilege Escalation", "Defense Evasion", "Credential Access",
+      "Discovery", "Lateral Movement", "Collection", "Command and Control",
+      "Exfiltration", "Impact"
+    ];
+
+    // ─── Init ───
+    async function init() {
+      const t0 = performance.now();
+      setTimeout(() => hideSplash(0), 6000); // safety: never get stuck on the splash
+      applyThemeIcon();
+      lucide.createIcons();
+      try {
+        await loadBenchmark();
+        await loadIncidents();
+      } finally {
+        hideSplash(t0);
+      }
+    }
+
+    // Keep the splash up for at least 700ms so it never flashes
+    function hideSplash(t0) {
+      const wait = Math.max(0, 700 - (performance.now() - t0));
+      setTimeout(() => {
+        const el = document.getElementById('splash');
+        if (!el || el.classList.contains('is-hidden')) return;
+        el.classList.add('is-hidden');
+        setTimeout(() => el.remove(), 500);
+      }, wait);
+    }
+
+    async function loadBenchmark() {
+      try {
+        const res = await fetch('/api/benchmark');
+        if (res.ok) {
+          const bm = await res.json();
+          document.getElementById('hud-alerts').textContent = bm.total_alerts.toLocaleString();
+          document.getElementById('hud-incidents').textContent = bm.total_incidents;
+          document.getElementById('hud-suppression').textContent = `${bm.noise_reduction_ratio_percent}%`;
+          document.getElementById('hud-mttt').textContent = `${bm.mttt_reduction_percent}%`;
+        }
+      } catch (err) { console.error("Benchmark load failed:", err); }
+    }
+
+    async function loadIncidents() {
+      try {
+        const res = await fetch('/api/incidents');
+        if (res.ok) {
+          const data = await res.json();
+          allIncidents = data.incidents;
+          applyFilters();
+          if (allIncidents.length > 0 && !selectedIncident) {
+            selectIncident(allIncidents[0].incident_id);
+          }
+        }
+      } catch (err) { console.error("Incidents load failed:", err); }
+    }
+
+    // ─── Filters ───
+    function applyFilters() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const tierFilter = document.getElementById('filter-tier').value;
+      const statusFilter = document.getElementById('filter-status').value;
+
+      const filtered = allIncidents.filter(inc => {
+        if (tierFilter !== 'ALL' && inc.highest_asset_tier !== tierFilter) return false;
+        if (statusFilter !== 'ALL' && inc.status !== statusFilter) return false;
+        if (search) {
+          const mTitle = inc.title.toLowerCase().includes(search);
+          const mHost = inc.primary_hostname && inc.primary_hostname.toLowerCase().includes(search);
+          const mUser = inc.primary_username && inc.primary_username.toLowerCase().includes(search);
+          const mTactics = inc.mitre_tactics.some(t => t.toLowerCase().includes(search));
+          if (!mTitle && !mHost && !mUser && !mTactics) return false;
+        }
+        return true;
+      });
+      renderIncidentList(filtered);
+    }
+
+    // ─── Incident list rendering ───
+    function renderIncidentList(incidents) {
+      const listEl = document.getElementById('incident-list');
+      listEl.innerHTML = '';
+      if (incidents.length === 0) {
+        listEl.innerHTML = '<div style="padding:24px; text-align:center; font-size:12px; color:var(--mist);">No incidents match the current filter.</div>';
+        return;
+      }
+      incidents.forEach(inc => {
+        const isSelected = selectedIncident && selectedIncident.incident_id === inc.incident_id;
+        const card = document.createElement('div');
+        card.style.cssText = `
+          padding: 12px 14px; border-radius: 10px; cursor: pointer;
+          border: 1px solid ${isSelected ? 'var(--accent)' : 'var(--line)'};
+          background: ${isSelected ? 'var(--accent-tint)' : 'var(--surface)'};
+          transition: border-color 0.15s, background 0.15s;
+        `;
+        card.onmouseover = () => { if (!isSelected) { card.style.background = 'var(--soft)'; card.style.borderColor = 'var(--line-strong)'; } };
+        card.onmouseout = () => { if (!isSelected) { card.style.background = 'var(--surface)'; card.style.borderColor = 'var(--line)'; } };
+        card.onclick = () => selectIncident(inc.incident_id);
+
+        let scoreColor = 'var(--accent)';
+        if (inc.risk_score >= 80) scoreColor = 'var(--ink)';
+        else if (inc.risk_score >= 50) scoreColor = 'var(--accent-soft)';
+
+        let tierBg = 'var(--soft)', tierColor = 'var(--mist)', tierBorder = 'var(--line)';
+        if (inc.highest_asset_tier.includes('Tier 0')) { tierBg = 'var(--soft)'; tierColor = 'var(--slate)'; tierBorder = 'var(--line-strong)'; }
+        else if (inc.highest_asset_tier.includes('Tier 1')) { tierBg = 'var(--tint)'; tierColor = 'var(--slate)'; tierBorder = 'var(--accent-line)'; }
+
+        const tierLabel = inc.highest_asset_tier.replace(' (Crown Jewel)', '').replace(' (Mission Critical)', '').replace(' (Internal Business)', '').replace(' (Dev / Guest / Lab)', '');
+
+        card.innerHTML = `
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+            <span style="font-size:10px; font-weight:700; color:var(--mist); font-family:inherit; font-variant-numeric:tabular-nums;">#${inc.risk_rank} · ${inc.incident_id}</span>
+            <span style="font-size:12px; font-weight:800; color:${scoreColor}; font-family:inherit; font-variant-numeric:tabular-nums;">${inc.risk_score.toFixed(1)}</span>
+          </div>
+          <div style="font-size:12px; font-weight:700; color:var(--ink); line-height:1.4; margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${inc.title}</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span style="font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; border:1px solid ${tierBorder}; background:${tierBg}; color:${tierColor};">${tierLabel}</span>
+            <span style="font-size:10px; color:var(--mist);">${inc.alert_count} alerts</span>
+            <span style="font-size:10px; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; max-width:80px; white-space:nowrap;">${inc.primary_hostname || 'N/A'}</span>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+    // ─── Select incident ───
+    async function selectIncident(incidentId) {
+      try {
+        const res = await fetch(`/api/incidents/${incidentId}`);
+        if (res.ok) {
+          selectedIncident = await res.json();
+          renderDetailView();
+          applyFilters();
+        }
+      } catch (err) { console.error("Incident detail load failed:", err); }
+    }
+
+    // ─── Detail view ───
+    function renderDetailView() {
+      if (!selectedIncident) return;
+      document.getElementById('no-selection').style.display = 'none';
+      const dv = document.getElementById('detail-view');
+      dv.style.display = 'flex';
+      dv.style.flexDirection = 'column';
+
+      const inc = selectedIncident;
+      document.getElementById('detail-rank').textContent = `Rank #${inc.risk_rank}`;
+      document.getElementById('detail-id').textContent = inc.incident_id;
+      document.getElementById('detail-tier-badge').textContent = inc.highest_asset_tier;
+      document.getElementById('detail-status-badge').textContent = inc.status;
+      document.getElementById('detail-title').textContent = inc.title;
+      document.getElementById('detail-host').textContent = inc.primary_hostname || 'N/A';
+      document.getElementById('detail-user').textContent = inc.primary_username || 'N/A';
+      document.getElementById('detail-alerts-count').textContent = `${inc.alert_count} alerts`;
+      document.getElementById('detail-duration').textContent = `${inc.duration_minutes} mins`;
+      document.getElementById('detail-score').textContent = inc.risk_score.toFixed(1);
+      document.getElementById('detail-crit').textContent = inc.max_asset_criticality.toFixed(1);
+      document.getElementById('tab-alerts-count').textContent = inc.alerts.length;
+
+      // Score ring color
+      const ring = document.getElementById('score-ring');
+      const scoreEl = document.getElementById('detail-score');
+      if (inc.risk_score >= 80) {
+        ring.style.borderColor = 'var(--ink)'; ring.style.background = 'var(--soft)';
+        scoreEl.style.color = 'var(--ink)';
+      } else if (inc.risk_score >= 50) {
+        ring.style.borderColor = 'var(--accent-soft)'; ring.style.background = 'var(--tint)';
+        scoreEl.style.color = 'var(--accent-soft)';
+      } else {
+        ring.style.borderColor = 'var(--accent)'; ring.style.background = 'var(--accent-tint)';
+        scoreEl.style.color = 'var(--accent)';
+      }
+
+      document.getElementById('analyst-verdict-select').value = inc.status;
+      document.getElementById('analyst-notes-input').value = inc.analyst_notes || '';
+
+      // Brief
+      if (inc.ai_brief) {
+        document.getElementById('brief-generator').textContent = `Generated by ${inc.ai_brief.generated_by}`;
+        document.getElementById('brief-headline').textContent = inc.ai_brief.headline;
+        document.getElementById('brief-exec').textContent = inc.ai_brief.executive_summary;
+        document.getElementById('brief-narrative').textContent = inc.ai_brief.attack_narrative;
+
+        const iocContainer = document.getElementById('brief-iocs');
+        iocContainer.innerHTML = '';
+        (inc.ai_brief.key_iocs || []).forEach(ioc => {
+          const chip = document.createElement('span');
+          chip.style.cssText = 'background:var(--well); color:var(--slate); font-family:"JetBrains Mono",monospace; font-size:11px; padding:4px 10px; border-radius:6px; border:1px solid var(--line);';
+          chip.textContent = ioc;
+          iocContainer.appendChild(chip);
+        });
+
+        const actionContainer = document.getElementById('brief-actions');
+        actionContainer.innerHTML = '';
+        (inc.ai_brief.recommended_actions || []).forEach(act => {
+          const li = document.createElement('li');
+          li.style.cssText = 'display:flex; align-items:flex-start; gap:8px; padding:8px 12px; background:var(--well); border-radius:8px; border:1px solid var(--line); font-size:12px; color:var(--slate); line-height:1.5;';
+          li.innerHTML = `<i data-lucide="chevron-right" style="width:14px;height:14px;color:var(--accent);margin-top:2px;flex-shrink:0;"></i><span>${act}</span>`;
+          actionContainer.appendChild(li);
+        });
+      }
+
+      const factorsContainer = document.getElementById('brief-factors');
+      factorsContainer.innerHTML = '';
+      (inc.risk_factors || []).forEach(factor => {
+        const li = document.createElement('li');
+        li.style.cssText = 'font-size:12px; font-family:"JetBrains Mono",monospace; color:var(--mist); padding:4px 0;';
+        li.textContent = factor;
+        factorsContainer.appendChild(li);
+      });
+
+      renderMitreKillChain();
+      renderAttackGraph();
+      renderAlertsTable();
+
+      if (inc.analyst_notes && inc.analyst_notes.includes('ACTION DISPATCHED')) {
+        document.getElementById('containment-log').textContent = inc.analyst_notes;
+      } else {
+        document.getElementById('containment-log').textContent = 'No playbook actions triggered yet during this shift.';
+      }
+
+      lucide.createIcons();
+      switchTab(currentTab);
+    }
+
+    // ─── MITRE Kill-Chain ───
+    function renderMitreKillChain() {
+      const inc = selectedIncident;
+      const strip = document.getElementById('mitre-timeline-strip');
+      strip.innerHTML = '';
+      const observedSet = new Set(inc.mitre_tactics);
+      document.getElementById('mitre-stages-count').textContent = `${observedSet.size} of 13 ATT&CK Tactics Detected`;
+
+      ALL_MITRE_TACTICS.forEach(tactic => {
+        const isHit = observedSet.has(tactic);
+        const box = document.createElement('div');
+        box.style.cssText = `
+          padding: 8px 6px; border-radius: 8px; text-align: center; cursor: default;
+          border: 1px solid ${isHit ? 'var(--accent)' : 'var(--line)'};
+          background: ${isHit ? 'var(--accent-tint)' : 'var(--well)'};
+        `;
+        const dotColor = isHit ? 'var(--accent)' : 'var(--faint)';
+        const labelColor = isHit ? 'var(--accent)' : 'var(--faint)';
+        const statusLabel = isHit ? 'ACTIVE' : 'IDLE';
+        box.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:4px;">
+            <span style="width:5px;height:5px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
+            <span style="font-size:9px; font-weight:800; letter-spacing:0.08em; color:${dotColor}; text-transform:uppercase;">${statusLabel}</span>
+          </div>
+          <div style="font-size:10px; color:${labelColor}; line-height:1.3; font-weight:${isHit?'600':'400'};">${tactic}</div>
+        `;
+        strip.appendChild(box);
+      });
+
+      const techList = document.getElementById('mitre-techniques-list');
+      techList.innerHTML = '';
+      (inc.mitre_techniques || []).forEach(t => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--well); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px;';
+        card.innerHTML = `
+          <span style="background:var(--tint); color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums; font-weight:800; font-size:10px; padding:3px 8px; border-radius:4px; border:1px solid var(--accent-line); flex-shrink:0; white-space:nowrap;">${t.id}</span>
+          <div>
+            <div style="font-size:12px; font-weight:700; color:var(--ink); line-height:1.4;">${t.name}</div>
+            <div style="font-size:10px; color:var(--mist);">ATT&CK Enterprise</div>
+          </div>
+        `;
+        techList.appendChild(card);
+      });
+    }
+
+    // ─── Alerts table ───
+    function renderAlertsTable() {
+      const tbody = document.getElementById('alerts-tbody');
+      tbody.innerHTML = '';
+      (selectedIncident.alerts || []).slice(0, 100).forEach((a, i) => {
+        const row = document.createElement('tr');
+        row.style.cssText = `border-top:1px solid var(--line); transition:background 0.1s; cursor:default;`;
+        row.onmouseover = () => row.style.background = 'var(--surface)';
+        row.onmouseout = () => row.style.background = '';
+
+        let sevColor = 'var(--mist)';
+        if (a.severity === 'Critical') sevColor = 'var(--ink)';
+        else if (a.severity === 'High') sevColor = 'var(--accent)';
+        else if (a.severity === 'Medium') sevColor = 'var(--accent-soft)';
+        else if (a.severity === 'Low') sevColor = 'var(--slate)';
+
+        const ts = new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        row.innerHTML = `
+          <td style="padding:9px 14px; font-size:11px; color:var(--mist); font-family:inherit; font-variant-numeric:tabular-nums; white-space:nowrap;">${ts}</td>
+          <td style="padding:9px 14px; font-size:11px; font-weight:800; color:${sevColor}; white-space:nowrap;">${a.severity}</td>
+          <td style="padding:9px 14px; font-size:12px; color:var(--ink);">${a.rule_name}</td>
+          <td style="padding:9px 14px; font-size:11px; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums;">${a.process_name || '—'}</td>
+          <td style="padding:9px 14px; font-size:11px; color:var(--mist); font-family:inherit; font-variant-numeric:tabular-nums; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${a.command_line || ''}">${a.command_line || '—'}</td>
+          <td style="padding:9px 14px; font-size:11px; color:var(--slate); font-family:inherit; font-variant-numeric:tabular-nums; white-space:nowrap;">${a.mitre_technique_id || '—'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // ─── Attack Graph ───
+    function renderAttackGraph() {
+      const container = document.getElementById('attack-graph-container');
+      const inc = selectedIncident;
+      if (!inc) return;
+
+      const isDC = inc.highest_asset_tier && inc.highest_asset_tier.includes('Tier 0');
+      const isWeb = inc.entities && inc.entities.hosts && inc.entities.hosts.some(h => h.includes('WEB'));
+      let svgHtml = '';
+
+      if (isDC) {
+        svgHtml = `
+          <svg viewBox="0 0 760 220" style="width:100%; height:auto;">
+            <defs>
+              <marker id="arr-red" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink)"/></marker>
+              <marker id="arr-amber" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-soft)"/></marker>
+              <marker id="arr-purple" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--slate)"/></marker>
+              <marker id="arr-teal" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/></marker>
+            </defs>
+            <line x1="80" y1="110" x2="220" y2="110" stroke="var(--accent-soft)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-amber)"/>
+            <text x="150" y="100" fill="var(--accent-soft)" font-size="10" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">T1566 Phishing</text>
+            <line x1="220" y1="110" x2="360" y2="50" stroke="var(--slate)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-purple)"/>
+            <text x="282" y="68" fill="var(--slate)" font-size="10" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">T1003 LSASS</text>
+            <line x1="360" y1="50" x2="520" y2="110" stroke="var(--ink)" stroke-width="2" marker-end="url(#arr-red)"/>
+            <text x="440" y="72" fill="var(--ink)" font-size="10" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">T1021.002 PsExec</text>
+            <path d="M 520 110 Q 640 30 680 110" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-teal)"/>
+            <text x="615" y="52" fill="var(--accent)" font-size="10" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">T1071 C2</text>
+
+            <g class="cursor-pointer" onclick="selectGraphNode('198.51.100.44','Attacker Infrastructure','Malicious IP orchestrating spearphishing and C2 beacons.','Malicious C2')">
+              <circle cx="80" cy="110" r="26" fill="var(--soft)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+              <text x="80" y="107" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-soft)" font-family="'Plus Jakarta Sans',sans-serif">C2</text>
+              <text x="80" y="120" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">198.51.x</text>
+              <text x="80" y="148" text-anchor="middle" font-size="10" fill="var(--accent-soft)" font-family="'Plus Jakarta Sans',sans-serif">Attacker</text>
+            </g>
+            <g class="cursor-pointer" onclick="selectGraphNode('WS-FIN-881','Initial Vector — Finance','Sarah Jenkins laptop compromised via malicious Excel macro.','Tier 2 (Crit 5.5)')">
+              <circle cx="220" cy="110" r="28" fill="var(--soft)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+              <text x="220" y="107" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-soft)" font-family="'Plus Jakarta Sans',sans-serif">WS-FIN</text>
+              <text x="220" y="120" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">881</text>
+              <text x="220" y="149" text-anchor="middle" font-size="10" fill="var(--slate)" font-family="'Plus Jakarta Sans',sans-serif">sarah.jenkins</text>
+            </g>
+            <g class="cursor-pointer" onclick="selectGraphNode('domain_admin_svc','Compromised Identity','Harvested via Mimikatz LSASS dump. Full AD rights.','Domain Admin')">
+              <circle cx="360" cy="50" r="24" fill="var(--soft)" stroke="var(--slate)" stroke-width="1.5"/>
+              <text x="360" y="47" text-anchor="middle" font-size="9" font-weight="700" fill="var(--slate)" font-family="'Plus Jakarta Sans',sans-serif">LSASS</text>
+              <text x="360" y="60" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">Dump</text>
+              <text x="360" y="86" text-anchor="middle" font-size="10" fill="var(--slate)" font-family="'Plus Jakarta Sans',sans-serif">da_svc</text>
+            </g>
+            <g class="cursor-pointer" onclick="selectGraphNode('DC-CORP-01','Domain Controller — Crown Jewel','Compromised via PsExec. High severity identity breach.','Tier 0 (Crit 10.0)')">
+              <circle cx="520" cy="110" r="34" fill="var(--soft)" stroke="var(--ink)" stroke-width="2"/>
+              <text x="520" y="107" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)" font-family="'Plus Jakarta Sans',sans-serif">DC-CORP</text>
+              <text x="520" y="121" text-anchor="middle" font-size="10" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">01</text>
+              <text x="520" y="157" text-anchor="middle" font-size="9" fill="var(--ink)" font-family="'Plus Jakarta Sans',sans-serif">Tier 0 · Crown Jewel</text>
+            </g>
+            <g class="cursor-pointer" onclick="selectGraphNode('C2 Channel','Egress Command Channel','Port 443 encrypted beaconing to adversary infra.','T1071 C2')">
+              <circle cx="680" cy="110" r="24" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.5"/>
+              <text x="680" y="107" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)" font-family="'Plus Jakarta Sans',sans-serif">C2 Out</text>
+              <text x="680" y="120" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">HTTPS</text>
+              <text x="680" y="147" text-anchor="middle" font-size="10" fill="var(--accent)" font-family="'Plus Jakarta Sans',sans-serif">Beacon</text>
+            </g>
+          </svg>
+        `;
+      } else if (isWeb) {
+        svgHtml = `
+          <svg viewBox="0 0 700 180" style="width:100%; height:auto;">
+            <line x1="120" y1="90" x2="350" y2="90" stroke="var(--ink)" stroke-width="1.5"/>
+            <text x="235" y="78" fill="var(--ink)" font-size="10" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">T1190 Log4j RCE</text>
+            <line x1="350" y1="90" x2="580" y2="90" stroke="var(--accent-soft)" stroke-width="1.5"/>
+            <text x="465" y="78" fill="var(--accent-soft)" font-size="10" font-weight="700" text-anchor="middle" font-family="'Plus Jakarta Sans',sans-serif">T1048 S3 Exfil</text>
+            <g class="cursor-pointer" onclick="selectGraphNode('203.0.113.89','Attacker Exploit Source','External IP firing Log4j JNDI lookup headers.','Exploit Source')">
+              <circle cx="120" cy="90" r="26" fill="var(--soft)" stroke="var(--ink)" stroke-width="1.5"/>
+              <text x="120" y="87" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)" font-family="'Plus Jakarta Sans',sans-serif">Exploit</text>
+              <text x="120" y="100" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">203.0.x</text>
+              <text x="120" y="127" text-anchor="middle" font-size="10" fill="var(--ink)" font-family="'Plus Jakarta Sans',sans-serif">Attacker</text>
+            </g>
+            <g class="cursor-pointer" onclick="selectGraphNode('SRV-WEB-PROD-01','Production Web Server','E-commerce API compromised via RCE. AWS creds harvested.','Tier 1 (Crit 8.8)')">
+              <circle cx="350" cy="90" r="32" fill="var(--tint)" stroke="var(--slate)" stroke-width="2"/>
+              <text x="350" y="86" text-anchor="middle" font-size="9" font-weight="700" fill="var(--slate)" font-family="'Plus Jakarta Sans',sans-serif">SRV-WEB</text>
+              <text x="350" y="99" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">PROD-01</text>
+              <text x="350" y="135" text-anchor="middle" font-size="10" fill="var(--slate)" font-family="'Plus Jakarta Sans',sans-serif">Tier 1 · Mission Critical</text>
+            </g>
+            <g class="cursor-pointer" onclick="selectGraphNode('AWS S3 Bucket','Exfiltration Destination','Attacker-controlled bucket receiving synced data.','Cloud Exfil')">
+              <circle cx="580" cy="90" r="26" fill="var(--soft)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+              <text x="580" y="87" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent-soft)" font-family="'Plus Jakarta Sans',sans-serif">S3 Bucket</text>
+              <text x="580" y="100" text-anchor="middle" font-size="9" fill="var(--mist)" font-family="'Plus Jakarta Sans',sans-serif">Shadow</text>
+              <text x="580" y="127" text-anchor="middle" font-size="10" fill="var(--accent-soft)" font-family="'Plus Jakarta Sans',sans-serif">Exfil Target</text>
+            </g>
+          </svg>
+        `;
+      } else {
+        svgHtml = `
+          <div style="padding:24px; display:flex; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap;">
+            <div style="padding:16px 20px; border-radius:10px; background:var(--surface); border:1px solid var(--line); text-align:center;">
+              <div style="font-size:13px; font-weight:700; color:var(--ink); margin-bottom:4px;">${inc.primary_hostname || 'Endpoint'}</div>
+              <div style="font-size:11px; color:var(--mist);">${inc.highest_asset_tier}</div>
+            </div>
+            <div style="font-size:11px; color:var(--faint); font-family:inherit; font-variant-numeric:tabular-nums; text-align:center;">
+              ${inc.alert_count} alerts, ${inc.mitre_tactics.length} tactics
+            </div>
+            <div style="padding:16px 20px; border-radius:10px; background:var(--surface); border:1px solid var(--line); text-align:center;">
+              <div style="font-size:13px; font-weight:700; color:var(--ink); margin-bottom:4px;">${inc.primary_username || 'Identity'}</div>
+              <div style="font-size:11px; color:var(--mist);">Risk Score: ${inc.risk_score.toFixed(1)}/100</div>
+            </div>
+          </div>
+        `;
+      }
+      container.innerHTML = svgHtml;
+    }
+
+    function selectGraphNode(title, subtitle, desc, badge) {
+      document.getElementById('gn-title').textContent = `${title} — ${subtitle}`;
+      document.getElementById('gn-desc').textContent = desc;
+      document.getElementById('gn-badge').textContent = badge;
+    }
+
+    // ─── Tabs ───
+    function switchTab(tab) {
+      currentTab = tab;
+      const tabs = ['brief', 'graph', 'mitre', 'alerts', 'analytics', 'contain'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const content = document.getElementById(`tab-content-${t}`);
+        if (!btn || !content) return;
+        if (t === tab) {
+          btn.style.color = 'var(--accent)';
+          btn.style.borderBottomColor = 'var(--accent)';
+          btn.style.fontWeight = '600';
+          content.style.display = 'flex';
+          content.style.flexDirection = 'column';
+        } else {
+          btn.style.color = 'var(--mist)';
+          btn.style.borderBottomColor = 'transparent';
+          btn.style.fontWeight = '500';
+          content.style.display = 'none';
+        }
+      });
+    }
+
+    // ─── Triage save ───
+    async function saveTriageDecision() {
+      if (!selectedIncident) return;
+      const status = document.getElementById('analyst-verdict-select').value;
+      const notes = document.getElementById('analyst-notes-input').value;
+      try {
+        const res = await fetch(`/api/incidents/${selectedIncident.incident_id}/triage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, analyst_notes: notes })
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          selectedIncident = updated.incident;
+          const idx = allIncidents.findIndex(i => i.incident_id === selectedIncident.incident_id);
+          if (idx !== -1) allIncidents[idx] = selectedIncident;
+          renderDetailView();
+          applyFilters();
+          alert(`Decision saved for ${selectedIncident.incident_id}.`);
+        }
+      } catch (err) { alert("Save failed: " + err); }
+    }
+
+    // ─── Containment actions ───
+    async function triggerContainmentAction(actionType) {
+      if (!selectedIncident) return;
+      let target = selectedIncident.primary_hostname;
+      if (actionType === 'BLOCK_IP') {
+        const externalIps = (selectedIncident.entities.ips || []).filter(ip => !ip.startsWith('10.') && !ip.startsWith('172.'));
+        target = externalIps[0] || '198.51.100.44';
+      } else if (actionType === 'REVOKE_CREDENTIALS') {
+        target = selectedIncident.primary_username || 'CORP\\compromised_svc';
+      }
+      if (!confirm(`Execute containment action '${actionType}' on: ${target}?`)) return;
+      try {
+        const res = await fetch(`/api/incidents/${selectedIncident.incident_id}/contain`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action_type: actionType, target })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          selectedIncident = data.incident;
+          const idx = allIncidents.findIndex(i => i.incident_id === selectedIncident.incident_id);
+          if (idx !== -1) allIncidents[idx] = selectedIncident;
+          renderDetailView();
+          alert(data.message);
+        }
+      } catch (err) { alert("Containment failed: " + err); }
+    }
+
+    // ─── Brief editor modal ───
+    function openBriefEditor() {
+      if (!selectedIncident || !selectedIncident.ai_brief) return;
+      const b = selectedIncident.ai_brief;
+      document.getElementById('modal-edit-headline').value = b.headline;
+      document.getElementById('modal-edit-exec').value = b.executive_summary;
+      document.getElementById('modal-edit-narrative').value = b.attack_narrative;
+      document.getElementById('modal-edit-impact').value = b.impact_assessment;
+      const modal = document.getElementById('brief-modal');
+      modal.style.display = 'flex';
+    }
+    function closeBriefEditor() {
+      document.getElementById('brief-modal').style.display = 'none';
+    }
+    async function saveBriefEdits() {
+      if (!selectedIncident) return;
+      const payload = {
+        headline: document.getElementById('modal-edit-headline').value,
+        executive_summary: document.getElementById('modal-edit-exec').value,
+        attack_narrative: document.getElementById('modal-edit-narrative').value,
+        impact_assessment: document.getElementById('modal-edit-impact').value,
+        key_iocs: selectedIncident.ai_brief.key_iocs || [],
+        recommended_actions: selectedIncident.ai_brief.recommended_actions || []
+      };
+      try {
+        const res = await fetch(`/api/incidents/${selectedIncident.incident_id}/brief`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          selectedIncident.ai_brief = data.brief;
+          renderDetailView();
+          closeBriefEditor();
+        }
+      } catch (err) { alert("Save failed: " + err); }
+    }
+
+    function downloadReport() { window.location.href = '/api/export/handover'; }
+
+    // ─── Theme (light / dark) ───
+    function applyThemeIcon() {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+      btn.innerHTML = `<i data-lucide="${dark ? 'sun' : 'moon'}" style="width:14px; height:14px;"></i>`;
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('aria-pressed', String(dark));
+      btn.title = label;
+      lucide.createIcons();
+    }
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+      try { localStorage.setItem('synapse-theme', next); } catch (e) {}
+      applyThemeIcon();
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

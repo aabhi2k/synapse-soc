@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNAPSE-SOC — Security alert triage</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+:root{--bg:#08090A;--panel:#0F1011;--line:rgba(255,255,255,.08);--ink:#F7F8F8;--mute:#8A8F98;--accent:#5FB3A1;--pad:clamp(20px,5vw,64px)}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+nav{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 var(--pad);border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(8,9,10,.85);backdrop-filter:blur(10px);z-index:10}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.brand i{width:18px;height:18px;color:var(--accent)}
+.links{display:flex;gap:28px;font-size:13px;color:var(--mute)}
+.links a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:8px 14px;border-radius:6px;transition:opacity .2s}
+.btn-light{background:var(--ink);color:var(--bg)}.btn-light:hover{opacity:.85}
+.btn-text{color:var(--mute);padding:8px 4px}.btn-text:hover{color:var(--ink)}
+.btn i{width:14px;height:14px}
+.hero{padding:clamp(56px,10vw,120px) var(--pad) 0;max-width:1200px;margin:0 auto}
+h1{font-size:clamp(34px,6vw,64px);font-weight:600;letter-spacing:-.035em;line-height:1.05;max-width:860px}
+.sub{margin-top:24px;font-size:clamp(15px,1.6vw,18px);color:var(--mute);line-height:1.55;max-width:560px}
+.cta{margin-top:32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.stage{margin-top:clamp(48px,8vw,96px);perspective:1800px;height:clamp(300px,46vw,560px);padding-top:28px;overflow:hidden;mask-image:linear-gradient(#000 60%,transparent)}
+.mock{width:min(1100px,100%);margin:0 auto;display:grid;grid-template-columns:240px 1fr;background:var(--panel);border:1px solid var(--line);border-radius:12px;transform:rotateX(18deg) rotateZ(-3deg);transform-origin:top center;box-shadow:0 40px 120px rgba(0,0,0,.6)}
+.m-side{border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:8px}
+.m-row{padding:10px 12px;border-radius:6px;font-size:12px;color:var(--mute);display:flex;justify-content:space-between;gap:8px}
+.m-row.on{background:rgba(255,255,255,.06);color:var(--ink)}
+.m-row b{font-weight:500;color:var(--accent)}
+.m-main{padding:28px 32px}
+.m-tag{font-size:11px;color:var(--accent);border:1px solid rgba(95,179,161,.35);padding:2px 8px;border-radius:4px}
+.m-title{font-size:22px;font-weight:600;letter-spacing:-.02em;margin:14px 0 10px}
+.m-line{height:8px;border-radius:4px;background:rgba(255,255,255,.07);margin:10px 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);max-width:1200px;margin:0 auto;padding:0 var(--pad);border-top:1px solid var(--line)}
+.stat{padding:36px 0;border-right:1px solid var(--line);padding-left:clamp(0px,2vw,28px)}.stat:first-child{padding-left:0}.stat:last-child{border:0}
+.stat b{display:block;font-size:clamp(26px,4vw,44px);font-weight:600;letter-spacing:-.03em}
+.stat span{font-size:13px;color:var(--mute)}
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);max-width:1200px;margin:clamp(40px,6vw,80px) auto;border:1px solid var(--line);border-radius:12px;overflow:hidden;width:calc(100% - 2*var(--pad))}
+.card{background:var(--bg);padding:32px}
+.card i{width:20px;height:20px;color:var(--accent);margin-bottom:20px}
+.card h3{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:8px}
+.card p{font-size:14px;color:var(--mute);line-height:1.6}
+footer{border-top:1px solid var(--line);padding:28px var(--pad);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute)}
+@media(max-width:820px){.links{display:none}.feat{grid-template-columns:1fr}.mock{grid-template-columns:1fr}.m-side{display:none}.stats{grid-template-columns:1fr}.stat{border-right:0;border-bottom:1px solid var(--line);padding:24px 0}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.sec{max-width:1200px;margin:0 auto;padding:clamp(56px,8vw,110px) var(--pad) 0}
+.sec h2{font-size:clamp(24px,3.6vw,40px);font-weight:600;letter-spacing:-.03em;line-height:1.1;max-width:640px}
+.sec>p{margin-top:16px;color:var(--mute);font-size:15px;line-height:1.6;max-width:560px}
+.viz{position:relative;margin-top:36px;border:1px solid var(--line);border-radius:12px;background:radial-gradient(ellipse at 50% 0,rgba(95,179,161,.08),transparent 60%),var(--panel);overflow:hidden}
+#noise{display:block;width:100%;height:clamp(260px,38vw,420px)}
+.viz-cap{position:absolute;left:20px;bottom:16px;font-size:12px;color:var(--mute);display:flex;gap:18px}
+.viz-cap b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.viz-tag{position:absolute;left:50%;top:50%;transform:translate(-50%,34px);font-size:11px;color:var(--accent);white-space:nowrap;opacity:0;transition:opacity .4s}
+.chain{display:grid;grid-template-columns:repeat(6,1fr);margin-top:36px;position:relative}
+.chain::before{content:"";position:absolute;left:8%;right:8%;top:23px;height:1px;background:var(--line)}
+.step{position:relative;text-align:center;padding:0 6px}
+.dot{width:46px;height:46px;margin:0 auto 14px;border-radius:50%;border:1px solid var(--line);background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--mute);animation:lit 9s infinite;animation-delay:calc(var(--i)*1.2s)}
+.dot i{width:18px;height:18px}
+.step b{display:block;font-size:13px;font-weight:500}
+.step span{font-size:11px;color:var(--mute)}
+@keyframes lit{0%,16%,100%{color:var(--mute);border-color:var(--line);box-shadow:none}4%,12%{color:var(--accent);border-color:var(--accent);box-shadow:0 0 24px rgba(95,179,161,.35)}}
+@media(max-width:820px){.chain{grid-template-columns:repeat(3,1fr);row-gap:28px}.chain::before{display:none}}
+@media(prefers-reduced-motion:reduce){.dot{animation:none}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="/"><i data-lucide="brain-circuit"></i>SYNAPSE-SOC</a>
+  <div class="links"><a href="#product">Product</a><a href="#how">How it works</a><a href="#impact">Impact</a></div>
+  <a class="btn btn-light" href="/app">Open console</a>
+</nav>
+
+<section class="hero" id="product">
+  <h1>SYNAPSE-SOC is a purpose-built tool for triaging security alerts.</h1>
+  <p class="sub">Turn thousands of raw alerts into a few prioritised incidents, mapped to MITRE ATT&amp;CK and ready for the next shift.</p>
+  <div class="cta">
+    <a class="btn btn-light" href="/app">Start triaging</a>
+    <a class="btn btn-text" href="#how">See how it works <i data-lucide="chevron-right"></i></a>
+  </div>
+  <div class="stage" aria-hidden="true">
+    <div class="mock">
+      <div class="m-side">
+        <div class="m-row on"><span>Domain controller compromise</span><b>27</b></div>
+        <div class="m-row"><span>Credential access, web tier</span><b>14</b></div>
+        <div class="m-row"><span>Lateral movement attempt</span><b>9</b></div>
+        <div class="m-row"><span>Port scan sweep</span><b>1,150</b></div>
+      </div>
+      <div class="m-main">
+        <span class="m-tag">Critical</span>
+        <div class="m-title">Domain controller compromise</div>
+        <div class="m-line" style="width:90%"></div><div class="m-line" style="width:72%"></div><div class="m-line" style="width:80%"></div>
+        <div class="m-line" style="width:48%;margin-top:28px"></div><div class="m-line" style="width:64%"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>From noise to signal</h2>
+  <p>Each dot is about 10 alerts. Watch 3,000 alerts collapse into 7 incidents. The bright one is the domain controller attack that scanner noise would have buried.</p>
+  <div class="viz">
+    <canvas id="noise" aria-label="Animation of 3,000 alerts grouping into 7 incidents"></canvas>
+    <div class="viz-tag" id="vtag">Domain controller · 27 alerts</div>
+    <div class="viz-cap"><span><b id="cA">3,000</b> alerts</span><span><b id="cI">3,000</b> items to review</span></div>
+  </div>
+</section>
+
+<section class="stats" id="impact">
+  <div class="stat"><b>3,000 → 7</b><span>alerts reduced to incidents</span></div>
+  <div class="stat"><b>99.8%</b><span>fewer items to triage</span></div>
+  <div class="stat"><b>~20 min</b><span>estimated review time, down from 200 hours</span></div>
+</section>
+
+<section class="sec">
+  <h2>Follow the attacker, step by step</h2>
+  <p>Every incident is mapped to MITRE ATT&amp;CK tactics, so the next shift sees how far the attack got.</p>
+  <div class="chain">
+    <div class="step" style="--i:0"><div class="dot"><i data-lucide="log-in"></i></div><b>Initial access</b><span>TA0001</span></div>
+    <div class="step" style="--i:1"><div class="dot"><i data-lucide="terminal"></i></div><b>Execution</b><span>TA0002</span></div>
+    <div class="step" style="--i:2"><div class="dot"><i data-lucide="anchor"></i></div><b>Persistence</b><span>TA0003</span></div>
+    <div class="step" style="--i:3"><div class="dot"><i data-lucide="key-round"></i></div><b>Privilege escalation</b><span>TA0004</span></div>
+    <div class="step" style="--i:4"><div class="dot"><i data-lucide="arrow-left-right"></i></div><b>Lateral movement</b><span>TA0008</span></div>
+    <div class="step" style="--i:5"><div class="dot"><i data-lucide="upload"></i></div><b>Exfiltration</b><span>TA0010</span></div>
+  </div>
+</section>
+
+<section class="feat" id="how">
+  <div class="card"><i data-lucide="network"></i><h3>Correlate</h3><p>Groups related alerts by host, user and time into a single incident.</p></div>
+  <div class="card"><i data-lucide="list-ordered"></i><h3>Prioritise</h3><p>Ranks by asset criticality and kill-chain progress, not raw alert count.</p></div>
+  <div class="card"><i data-lucide="file-text"></i><h3>Hand over</h3><p>Writes a clear brief per incident. The analyst approves every decision.</p></div>
+</section>
+
+<footer><span>SYNAPSE-SOC</span><span>Figures from a simulated 24-hour dataset</span></footer>
+<script>
+(function(){
+  const cv=document.getElementById('noise'),ctx=cv.getContext('2d');
+  const W=[1150,500,400,350,300,250,50]; // last = domain controller (bright)
+  const C=[[.15,.5],[.3,.28],[.3,.74],[.7,.28],[.7,.74],[.85,.5],[.5,.5]];
+  const P=[];let w=0,h=0,dpr=1;
+  W.forEach((n,c)=>{for(let i=0;i<Math.max(5,Math.round(n/10));i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*Math.sqrt(n)*1.9;P.push({c,nx:Math.random(),ny:Math.random(),dx:Math.cos(a)*r,dy:Math.sin(a)*r,ph:Math.random()*6.283});}});
+  const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+  function size(){dpr=Math.min(devicePixelRatio||1,2);w=cv.clientWidth;h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+  const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const cA=document.getElementById('cA'),cI=document.getElementById('cI'),tag=document.getElementById('vtag');
+  let on=false,t0=performance.now();
+  function frame(now){
+    const T=((now-t0)/1000)%12; // 0-3 noise, 3-6 merge, 6-9 hold, 9-12 scatter
+    let p=still?1:T<3?0:T<6?ease((T-3)/3):T<9?1:1-ease((T-9)/3);
+    ctx.clearRect(0,0,w,h);
+    for(const d of P){
+      const hot=d.c===6,cx=C[d.c][0]*w+d.dx,cy=C[d.c][1]*h+d.dy;
+      const wob=(1-p)*Math.sin(now/900+d.ph)*6;
+      const x=d.nx*w*(1-p)+cx*p+wob,y=d.ny*h*(1-p)+cy*p+wob;
+      if(hot){ctx.shadowColor='rgba(95,179,161,.9)';ctx.shadowBlur=14;ctx.fillStyle='#5FB3A1';}
+      else{ctx.shadowBlur=0;ctx.fillStyle='rgba(138,143,152,.55)';}
+      ctx.beginPath();ctx.arc(x,y,hot?3:1.8,0,6.283);ctx.fill();
+    }
+    ctx.shadowBlur=0;
+    cA.textContent='3,000';
+    cI.textContent=Math.round(3000-p*2993).toLocaleString();
+    tag.style.opacity=p>.9?1:0;
+    if(on&&!still)requestAnimationFrame(frame);
+  }
+  size();addEventListener('resize',()=>{size();frame(performance.now());});
+  new IntersectionObserver(e=>{const v=e[0].isIntersecting;if(v&&!on){on=true;t0=performance.now();requestAnimationFrame(frame);}else if(!v)on=false;}).observe(cv);
+  frame(performance.now());
+})();
+</script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+BENIGN: null
+DoS Hulk: "T1498"
+DDoS: "T1498"
+PortScan: "T1046"
+FTP-Patator: "T1110"
+SSH-Patator: "T1110.001"
+Web Attack Brute Force: "T1110"
+Bot: "T1071.001"
+Infiltration: "T1190"
+Heartbleed: "T1190"
